@@ -29,7 +29,7 @@ class Network(minitorch.Module):
         self.layer3 = Linear(hidden, 1, backend)
 
     def forward(self, x):
-        # TODO: Implement for Task 3.5.
+        # : Implement for Task 3.5.
         raise NotImplementedError("Need to implement for Task 3.5")
 
 

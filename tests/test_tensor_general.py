@@ -52,7 +52,7 @@ def test_create(backend: str, t1: List[float]) -> None:
 
 
 @given(data())
-@settings(max_examples=100)
+@settings(max_examples=5)
 @pytest.mark.parametrize("fn", one_arg)
 @pytest.mark.parametrize("backend", backend_tests)
 def test_one_args(

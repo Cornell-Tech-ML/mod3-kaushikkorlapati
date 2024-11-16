@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, TypeVar, Any
 import numpy as np
 from numba import prange
 from numba import njit as _njit
+from . import operators
 
 from .tensor_data import (
     MAX_DIMS,
@@ -169,8 +170,23 @@ def tensor_map(
         in_strides: Strides,
     ) -> None:
         # TODO: Implement for Task 3.1.
-        raise NotImplementedError("Need to implement for Task 3.1")
-
+        if len(out_shape) > MAX_DIMS or len(in_shape) > MAX_DIMS:
+            raise ValueError(f"Tensor dimensions cannot exceed {MAX_DIMS}")
+        
+        if (len(out_shape) == len(in_shape) and len(out_strides) == len(in_strides) and (out_shape == in_shape).all() 
+            and (out_strides == in_strides).all()):
+            for i in prange(len(out)):
+                out[i] = fn(in_storage[i])
+        else:
+            for i in prange(len(out)):
+                out_index = np.zeros(len(out_shape), dtype=np.int32)
+                in_index = np.zeros(len(in_shape), dtype=np.int32)
+                to_index(i, out_shape, out_index)
+                broadcast_index(out_index, out_shape, in_shape, in_index)
+                out_pos = index_to_position(out_index, out_strides)
+                in_pos = index_to_position(in_index, in_strides)
+                out[out_pos] = fn(in_storage[in_pos])
+        #raise NotImplementedError("Need to implement for Task 3.1")
     return njit(_map, parallel=True)  # type: ignore
 
 
@@ -209,7 +225,38 @@ def tensor_zip(
         b_strides: Strides,
     ) -> None:
         # TODO: Implement for Task 3.1.
-        raise NotImplementedError("Need to implement for Task 3.1")
+        if (
+            len(out_strides) == len(a_strides)
+            and len(out_shape) == len(a_shape)
+            and len(a_strides) == len(b_strides)
+            and len(b_shape) == len(a_shape)
+            and (out_strides == a_strides).all()
+            and (a_strides == b_strides).all()
+            and (out_shape == a_shape).all()
+            and (a_shape == b_shape).all()
+        ):
+            for i in prange(len(out)):
+                out[i] = fn(a_storage[i], b_storage[i])
+        else:
+            # global broacasting case
+            for i in prange(len(out)):
+                out_index = np.empty(MAX_DIMS, dtype=np.int32)
+                in_index_a = np.empty(MAX_DIMS, dtype=np.int32)
+                in_index_b = np.empty(MAX_DIMS, dtype=np.int32)
+                to_index(i, out_shape, out_index)
+
+                broadcast_index(out_index, out_shape, a_shape, in_index_a)
+                broadcast_index(out_index, out_shape, b_shape, in_index_b)
+
+                # Calculate ordinals
+                in_position_a = index_to_position(in_index_a, a_strides)
+                in_position_b = index_to_position(in_index_b, b_strides)
+                out_position = index_to_position(out_index, out_strides)
+
+                out[out_position] = fn(
+                    a_storage[in_position_a], b_storage[in_position_b]
+                )
+        #raise NotImplementedError("Need to implement for Task 3.1")
 
     return njit(_zip, parallel=True)  # type: ignore
 
@@ -245,7 +292,23 @@ def tensor_reduce(
         reduce_dim: int,
     ) -> None:
         # TODO: Implement for Task 3.1.
-        raise NotImplementedError("Need to implement for Task 3.1")
+        if len(out_shape) > MAX_DIMS or len(a_shape) > MAX_DIMS:
+            raise ValueError(f"Tensor dimensions cannot exceed {MAX_DIMS}")
+
+        for i in prange(len(out)):
+            out_index: Index = np.empty(MAX_DIMS, dtype=np.int32)
+            reduce_size: int = a_shape[reduce_dim]
+            to_index(i, out_shape, out_index)
+            output_position = index_to_position(out_index, out_strides)
+
+            reduce_stride = a_strides[reduce_dim]
+            baseIdx = index_to_position(out_index, a_strides)
+            acc = out[output_position]
+            for j in range(reduce_size):
+                a_position = baseIdx + j * reduce_stride
+                acc = fn(acc, a_storage[a_position])
+
+            out[output_position] = acc
 
     return njit(_reduce, parallel=True)  # type: ignore
 
@@ -296,8 +359,39 @@ def _tensor_matrix_multiply(
     a_batch_stride = a_strides[0] if a_shape[0] > 1 else 0
     b_batch_stride = b_strides[0] if b_shape[0] > 1 else 0
 
-    # TODO: Implement for Task 3.2.
-    raise NotImplementedError("Need to implement for Task 3.2")
+    assert a_shape[-1] == b_shape[-2]
+
+    N = len(out)
+
+    # Precompute shape and stride elements to avoid indexing overhead
+    out_dim0, out_dim1, out_dim2 = out_shape[0], out_shape[1], out_shape[2]
+    out_stride0, out_stride1, out_stride2 = out_strides[0], out_strides[1], out_strides[2]
+    a_stride1, a_stride2 = a_strides[1], a_strides[2]
+    b_stride1, b_stride2 = b_strides[1], b_strides[2]
+
+    for i in prange(N):
+        # Compute indices for out tensor
+        out_0 = i // (out_dim1 * out_dim2)
+        rem = i % (out_dim1 * out_dim2)
+        out_1 = rem // out_dim2
+        out_2 = rem % out_dim2
+
+        # Compute positions in out storage
+        out_pos = out_0 * out_stride0 + out_1 * out_stride1 + out_2 * out_stride2
+
+        # Compute starting positions in a and b storages
+        a_start = out_0 * a_batch_stride + out_1 * a_stride1
+        b_start = out_0 * b_batch_stride + out_2 * b_stride2
+
+        temp = 0.0
+        for k in range(a_shape[-1]):
+            # Access elements from a and b
+            a_pos = a_start + k * a_stride2
+            b_pos = b_start + k * b_stride1
+            temp += a_storage[a_pos] * b_storage[b_pos]
+
+        out[out_pos] = temp
+
 
 
 tensor_matrix_multiply = njit(_tensor_matrix_multiply, parallel=True)
