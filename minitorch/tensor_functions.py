@@ -423,7 +423,7 @@ class Log(Function):
 
         """
         (t1,) = ctx.saved_values
-        return t1.f.log_back_zip(t1, grad_output)
+        return grad_output.f.log_back_zip(t1, grad_output)
 
 
 class Exp(Function):
