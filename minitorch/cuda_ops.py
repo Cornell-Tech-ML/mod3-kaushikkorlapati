@@ -170,28 +170,16 @@ def tensor_map(
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
-        # Get the global thread index
-        i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
-
-        if i >= out_size:
-            return
-
-        # Allocate local arrays for indices
         out_index = cuda.local.array(MAX_DIMS, numba.int32)
         in_index = cuda.local.array(MAX_DIMS, numba.int32)
-
-        # Convert flat index i to multi-dimensional index out_index
-        to_index(i, out_shape, out_index)
-
-        # Compute the corresponding input index, taking broadcasting into account
-        broadcast_index(out_index, out_shape, in_shape, in_index)
-
-        # Compute positions in storage
-        in_pos = index_to_position(in_index, in_strides)
-        out_pos = index_to_position(out_index, out_strides)
-
-        # Apply the function fn to the input value
-        out[out_pos] = fn(in_storage[in_pos])
+        i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
+        # TODO: Implement for Task 3.3.
+        if i < out_size:
+            to_index(i, out_shape, out_index)
+            broadcast_index(out_index, out_shape, in_shape, in_index)
+            in_pos = index_to_position(in_index, in_strides)
+            out_pos = index_to_position(out_index, out_strides)
+            out[out_pos] = fn(in_storage[in_pos])
 
     return cuda.jit()(_map)  # type: ignore
 
@@ -228,30 +216,20 @@ def tensor_zip(
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
-
-        if i >= out_size:
-            return
-
-        # Allocate local arrays for indices
         out_index = cuda.local.array(MAX_DIMS, numba.int32)
         a_index = cuda.local.array(MAX_DIMS, numba.int32)
         b_index = cuda.local.array(MAX_DIMS, numba.int32)
+        i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
 
-        # Convert flat index i to multi-dimensional index out_index
-        to_index(i, out_shape, out_index)
-
-        # Compute the corresponding indices in a and b, with broadcasting
-        broadcast_index(out_index, out_shape, a_shape, a_index)
-        broadcast_index(out_index, out_shape, b_shape, b_index)
-
-        # Compute positions in storage
-        a_pos = index_to_position(a_index, a_strides)
-        b_pos = index_to_position(b_index, b_strides)
-        out_pos = index_to_position(out_index, out_strides)
-
-        # Apply the function fn to the input values
-        out[out_pos] = fn(a_storage[a_pos], b_storage[b_pos])
+        # TODO: Implement for Task 3.3.
+        if i < out_size:
+            to_index(i, out_shape, out_index)
+            broadcast_index(out_index, out_shape, a_shape, a_index)
+            broadcast_index(out_index, out_shape, b_shape, b_index)
+            a_pos = index_to_position(a_index, a_strides)
+            b_pos = index_to_position(b_index, b_strides)
+            out_pos = index_to_position(out_index, out_strides)
+            out[out_pos] = fn(a_storage[a_pos], b_storage[b_pos])
 
     return cuda.jit()(_zip)  # type: ignore
 
@@ -280,33 +258,23 @@ def _sum_practice(out: Storage, a: Storage, size: int) -> None:
     BLOCK_DIM = 32
 
     cache = cuda.shared.array(BLOCK_DIM, numba.float64)
-
-    # Global thread index
     i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
+    pos = cuda.threadIdx.x
 
-    # Local thread index within the block
-    tid = cuda.threadIdx.x
-
-    # Each thread loads one element from global to shared memory
+    # TODO: Implement for Task 3.3.
     if i < size:
-        cache[tid] = a[i]
-    else:
-        cache[tid] = 0.0
-
-    # Synchronize threads within the block
-    cuda.syncthreads()
-
-    # Perform reduction in shared memory
-    offset = 1
-    while offset < BLOCK_DIM:
+        cache[pos] = a[i]
         cuda.syncthreads()
-        if tid % (2 * offset) == 0 and (tid + offset) < BLOCK_DIM:
-            cache[tid] += cache[tid + offset]
-        offset *= 2
-
-    # Write result to output
-    if tid == 0:
-        out[cuda.blockIdx.x] = cache[0]
+        max_pos = min(BLOCK_DIM, size - cuda.blockIdx.x * BLOCK_DIM) + 1
+        span = 2
+        while span < max_pos:
+            if pos % span == 0:
+                next = pos + span // 2
+                cache[pos] += cache[next]
+            span *= 2
+            cuda.syncthreads()
+        if pos == 0:
+            out[cuda.blockIdx.x] = cache[0]
 
 
 jit_sum_practice = cuda.jit()(_sum_practice)
