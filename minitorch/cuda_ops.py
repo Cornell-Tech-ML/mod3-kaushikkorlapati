@@ -94,7 +94,7 @@ class CudaOps(TensorOps):
             out_shape[dim] = (a.shape[dim] - 1) // 1024 + 1
             out_a = a.zeros(tuple(out_shape))
 
-            threadsperblock = 1024
+            threadsperblock = 512
             blockspergrid = out_a.size
             f[blockspergrid, threadsperblock](  # type: ignore
                 *out_a.tuple(), out_a.size, *a.tuple(), dim, start
@@ -318,62 +318,33 @@ def tensor_reduce(
         reduce_dim: int,
         reduce_value: float,
     ) -> None:
-        BLOCK_DIM = 1024
+        BLOCK_DIM = 512
         cache = cuda.shared.array(BLOCK_DIM, numba.float64)
-
-        # Global block index (one per output element)
-        out_idx = cuda.blockIdx.x
-
-        # Local thread index
-        tid = cuda.threadIdx.x
-
-        # Total number of dimensions
-        num_dims = len(out_shape)
-
-        # Allocate index arrays
         out_index = cuda.local.array(MAX_DIMS, numba.int32)
-        a_index = cuda.local.array(MAX_DIMS, numba.int32)
+        out_pos = cuda.blockIdx.x
+        pos = cuda.threadIdx.x
 
-        # Convert out_idx to multi-dimensional index
-        to_index(out_idx, out_shape, out_index)
-
-        # Initialize cache[tid] to reduce_value
-        cache[tid] = reduce_value
-
-        # Size along reduce dimension
-        reduce_dim_size = a_shape[reduce_dim]
-
-        # Each thread processes multiple elements along reduce_dim
-        idx = tid
-        while idx < reduce_dim_size:
-            # Copy out_index to a_index
-            for d in range(num_dims):
-                a_index[d] = out_index[d]
-            a_index[reduce_dim] = idx
-
-            # Compute position in storage
-            a_pos = index_to_position(a_index, a_strides)
-
-            # Accumulate value
-            cache[tid] = fn(cache[tid], a_storage[a_pos])
-
-            idx += BLOCK_DIM
-
-        # Synchronize threads within block
-        cuda.syncthreads()
-
-        # Perform reduction within the block
-        offset = BLOCK_DIM // 2
-        while offset > 0:
-            if tid < offset:
-                cache[tid] = fn(cache[tid], cache[tid + offset])
+        # TODO: Implement for Task 3.3.
+        reduce_dim_local = reduce_dim
+        if out_pos < out_size:
+            to_index(out_pos, out_shape, out_index)
+            o = index_to_position(out_index, out_strides)
+            if pos < a_shape[reduce_dim_local]:
+                out_index[reduce_dim_local] = pos
+                a = index_to_position(out_index, a_strides)
+                cache[pos] = a_storage[a]
+            else:
+                cache[pos] = reduce_value
             cuda.syncthreads()
-            offset //= 2
-
-        # Write result to output
-        if tid == 0:
-            out_pos = index_to_position(out_index, out_strides)
-            out[out_pos] = cache[0]
+            span = 2
+            while span < BLOCK_DIM + 1:
+                if pos % span == 0:
+                    next = pos + span // 2
+                    cache[pos] = fn(cache[pos], cache[next])
+                span *= 2
+                cuda.syncthreads()
+            if pos == 0:
+                out[o] = cache[0]
 
     return jit(_reduce)  # type: ignore
 
