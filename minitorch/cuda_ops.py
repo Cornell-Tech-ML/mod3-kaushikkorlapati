@@ -1,7 +1,7 @@
 # type: ignore
 # Currently pyright doesn't support numba.cuda
 
-from typing import Callable, Optional, TypeVar, Any
+from typing import Callable, Optional, TypeVar, Any, Dict
 
 import numba
 from numba import cuda
@@ -33,7 +33,7 @@ def device_jit(fn: Fn, **kwargs) -> Fn:
     return _jit(device=True, **kwargs)(fn)  # type: ignore
 
 
-def jit(fn, **kwargs) -> FakeCUDAKernel:
+def jit(fn, **kwargs: Dict[str, Any]) -> FakeCUDAKernel:
     return _jit(**kwargs)(fn)  # type: ignore
 
 
@@ -504,7 +504,4 @@ def _tensor_matrix_multiply(
     if i < out_shape[-2] and j < out_shape[-1]:
         # single write from accumulator to global memory
         out[out_strides[-2] * i + out_strides[-1] * j + batch * out_strides[0]] += acc
-
-
-
 tensor_matrix_multiply = jit(_tensor_matrix_multiply)
