@@ -7,6 +7,7 @@ from numba import prange
 from numba import njit as _njit
 
 from .tensor_data import (
+    MAX_DIMS,
     broadcast_index,
     index_to_position,
     shape_broadcast,
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
     from typing import Callable, Optional
 
     from .tensor import Tensor
-    from .tensor_data import Shape, Storage, Strides
+    from .tensor_data import Index, Shape, Storage, Strides
 
 # TIP: Use `NUMBA_DISABLE_JIT=1 pytest tests/ -m task3_1` to run these tests without JIT.
 
@@ -29,18 +30,6 @@ Fn = TypeVar("Fn")
 
 
 def njit(fn: Fn, **kwargs: Any) -> Fn:
-    """JIT compile a numba function.
-
-    Args:
-    ----
-        fn (Fn): The function to be JIT compiled.
-        **kwargs: Additional keyword arguments to pass to the JIT compiler.
-
-    Returns:
-    -------
-        Fn: The JIT compiled function.
-
-    """
     return _njit(inline="always", **kwargs)(fn)  # type: ignore
 
 
@@ -179,7 +168,6 @@ def tensor_map(
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
-        # TODO: Implement for Task 3.1.
         if (out_strides == in_strides).all() and (out_shape == in_shape).all():
             for i in prange(len(out)):
                 out[i] = fn(in_storage[i])
@@ -230,7 +218,6 @@ def tensor_zip(
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        # TODO: Implement for Task 3.1.
         if (
             np.array_equal(out_strides, a_strides)
             and np.array_equal(out_strides, b_strides)
@@ -285,7 +272,6 @@ def tensor_reduce(
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        # TODO: Implement for Task 3.1.
         reduce_size = a_shape[reduce_dim]
         reduce_stride = a_strides[reduce_dim]
         for i in prange(len(out)):
@@ -348,7 +334,6 @@ def _tensor_matrix_multiply(
     b_batch_stride = b_strides[0] if b_shape[0] > 1 else 0
 
     # TODO: Implement for Task 3.2.
-    # only need to consider the 3D case
     d_shared = a_shape[-1]
     for l in prange(len(out)):
         j = l % out_shape[2]

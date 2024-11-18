@@ -1,7 +1,7 @@
 # type: ignore
 # Currently pyright doesn't support numba.cuda
 
-from typing import Callable, Optional, TypeVar, Any, Dict
+from typing import Callable, Optional, TypeVar, Any
 
 import numba
 from numba import cuda
@@ -33,7 +33,7 @@ def device_jit(fn: Fn, **kwargs) -> Fn:
     return _jit(device=True, **kwargs)(fn)  # type: ignore
 
 
-def jit(fn, **kwargs: Dict[str, Any]) -> FakeCUDAKernel:
+def jit(fn, **kwargs) -> FakeCUDAKernel:
     return _jit(**kwargs)(fn)  # type: ignore
 
 
@@ -174,12 +174,14 @@ def tensor_map(
         in_index = cuda.local.array(MAX_DIMS, numba.int32)
         i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
         # TODO: Implement for Task 3.3.
-        if i < out_size:
+        out_index = np.zeros(len(out_shape), dtype=np.int32)
+        for i in range(len(out)):
             to_index(i, out_shape, out_index)
-            broadcast_index(out_index, out_shape, in_shape, in_index)
-            in_pos = index_to_position(in_index, in_strides)
             out_pos = index_to_position(out_index, out_strides)
-            out[out_pos] = fn(in_storage[in_pos])
+            for j in range(a_shape[reduce_dim]):
+                out_index[reduce_dim] = j
+                a_pos = index_to_position(out_index, a_strides)
+                out[out_pos] = fn(out[out_pos], a_storage[a_pos])
 
     return cuda.jit()(_map)  # type: ignore
 
@@ -275,6 +277,7 @@ def _sum_practice(out: Storage, a: Storage, size: int) -> None:
             cuda.syncthreads()
         if pos == 0:
             out[cuda.blockIdx.x] = cache[0]
+    raise NotImplementedError("Need to implement for Task 3.3")
 
 
 jit_sum_practice = cuda.jit()(_sum_practice)
@@ -318,7 +321,7 @@ def tensor_reduce(
         reduce_dim: int,
         reduce_value: float,
     ) -> None:
-        BLOCK_DIM = 512
+        BLOCK_DIM = 1024
         cache = cuda.shared.array(BLOCK_DIM, numba.float64)
         out_index = cuda.local.array(MAX_DIMS, numba.int32)
         out_pos = cuda.blockIdx.x
@@ -403,7 +406,6 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
         # single global write per thread
         out[idx] = acc
 
-
 jit_mm_practice = jit(_mm_practice)
 
 
@@ -470,7 +472,6 @@ def _tensor_matrix_multiply(
     #    b) Copy into shared memory for b matrix
     #    c) Compute the dot produce for position c[i, j]
     # TODO: Implement for Task 3.4.
-
     acc = 0.0  # accumulator for matmul results. One per thread
     # Move across shared dimension by block dim.
     for chunk in range(0, a_shape[-1], BLOCK_DIM):
@@ -504,4 +505,6 @@ def _tensor_matrix_multiply(
     if i < out_shape[-2] and j < out_shape[-1]:
         # single write from accumulator to global memory
         out[out_strides[-2] * i + out_strides[-1] * j + batch * out_strides[0]] += acc
+
+
 tensor_matrix_multiply = jit(_tensor_matrix_multiply)

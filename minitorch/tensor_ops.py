@@ -288,16 +288,11 @@ def tensor_map(
         # Iterate over the output tensor's elements.
         out_index = np.zeros(len(out_shape), dtype=np.int32)
         in_index = np.zeros(len(in_shape), dtype=np.int32)
-
-        for i in range(int(operators.prod(out_shape))):
-            # Convert i to the correct multidimensional index for the output tensor.
+        for i in range(len(out)):
             to_index(i, out_shape, out_index)
-            # Use broadcasting rules to get the corresponding input index.
             broadcast_index(out_index, out_shape, in_shape, in_index)
-            # Compute the position in the input and output storage arrays.
-            out_pos = index_to_position(out_index, out_strides)
             in_pos = index_to_position(in_index, in_strides)
-            # Apply the function to the input value and store it in the output.
+            out_pos = index_to_position(out_index, out_strides)
             out[out_pos] = fn(in_storage[in_pos])
 
     return _map
@@ -332,58 +327,18 @@ def tensor_zip(
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        if (
-            np.array_equal(a_shape, b_shape)
-            and np.array_equal(a_shape, out_shape)
-            and np.array_equal(b_shape, out_shape)
-        ):
-            for ordinal in range(int(operators.prod(out_shape))):
-                out_index = np.zeros(len(out_shape), dtype=np.int32)
-                to_index(ordinal, np.array(out_shape, dtype=np.int32), out_index)
-                out_pos = index_to_position(
-                    np.array(out_index, dtype=np.int32), out_strides
-                )
-                a_pos = index_to_position(
-                    np.array(out_index, dtype=np.int32), a_strides
-                )
-                b_pos = index_to_position(
-                    np.array(out_index, dtype=np.int32), b_strides
-                )
-                out[out_pos] = fn(a_storage[a_pos], b_storage[b_pos])
+        out_index = np.zeros(len(out_shape), dtype=np.int32)
+        a_index = np.zeros(len(a_shape), dtype=np.int32)
+        b_index = np.zeros(len(b_shape), dtype=np.int32)
+        for i in range(len(out)):
+            to_index(i, out_shape, out_index)
+            broadcast_index(out_index, out_shape, a_shape, a_index)
+            a_pos = index_to_position(a_index, a_strides)
 
-        else:
-            out_index = np.zeros(
-                len(out_shape), dtype=np.int32
-            )  # Create ndarray with dtype int32
-            a_index = np.zeros(
-                len(a_shape), dtype=np.int32
-            )  # Create ndarray with dtype int32
-            b_index = np.zeros(
-                len(b_shape), dtype=np.int32
-            )  # Create ndarray with dtype int32
-
-            for ordinal in range(int(operators.prod(out_shape))):
-                to_index(ordinal, np.array(out_shape, dtype=np.int32), out_index)
-                for i in range(len(a_shape)):
-                    if a_shape[i] == 1:
-                        a_index[i] = 0
-                    else:
-                        a_index[i] = out_index[i]
-
-                for i in range(len(b_shape)):
-                    if b_shape[i] == 1:
-                        b_index[i] = 0
-                    else:
-                        b_index[i] = out_index[i]
-
-                # Convert the multidimensional indices to storage positions
-                out_pos = index_to_position(
-                    np.array(out_index, dtype=np.int32), out_strides
-                )
-                a_pos = index_to_position(np.array(a_index, dtype=np.int32), a_strides)
-                b_pos = index_to_position(np.array(b_index, dtype=np.int32), b_strides)
-                out[out_pos] = fn(a_storage[a_pos], b_storage[b_pos])
-
+            broadcast_index(out_index, out_shape, b_shape, b_index)
+            b_pos = index_to_position(b_index, b_strides)
+            out_pos = index_to_position(out_index, out_strides)
+            out[out_pos] = fn(a_storage[a_pos], b_storage[b_pos])
     return _zip
 
 
@@ -414,25 +369,14 @@ def tensor_reduce(
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        dim_size = a_shape[reduce_dim]
         out_index = np.zeros(len(out_shape), dtype=np.int32)
-
-        for out_pos in range(len(out)):
-            res = None
-            to_index(out_pos, out_shape, out_index)
-            out_storage_pos = index_to_position(out_index, out_strides)
-
-            for reduce_pos in range(dim_size):
-                a_index = out_index.copy()
-                a_index[reduce_dim] = reduce_pos
-                a_storage_pos = index_to_position(a_index, a_strides)
-
-                if res is None:
-                    res = a_storage[a_storage_pos]
-                else:
-                    res = fn(res, a_storage[a_storage_pos])
-
-            out[out_storage_pos] = res
+        for i in range(len(out)):
+            to_index(i, out_shape, out_index)
+            out_pos = index_to_position(out_index, out_strides)
+            for j in range(a_shape[reduce_dim]):
+                out_index[reduce_dim] = j
+                a_pos = index_to_position(out_index, a_strides)
+                out[out_pos] = fn(out[out_pos], a_storage[a_pos])
 
     return _reduce
 
