@@ -381,25 +381,27 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
 
     """
     BLOCK_DIM = 32
-    shared_a = numba.cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
-    shared_b = numba.cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
+    # TODO: Implement for Task 3.3.
+    cache_a = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
+    cache_b = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
+    row = cuda.threadIdx.x
+    col = cuda.threadIdx.y
 
-    y = numba.cuda.threadIdx.y
-    x = numba.cuda.threadIdx.x
-    if x < size and y < size:
-        shared_a[y, x] = a[y * size + x]
-        shared_b[y, x] = b[y * size + x]
-    else:
-        shared_a[y, x] = 0
-        shared_b[y, x] = 0
-    numba.cuda.syncthreads()
-
-    if y < size and x < size:
-        temp = 0
-        for val in range(size):
-            temp += shared_a[y, val] * shared_b[val, x]
-        out[y * size + x] = temp
-    raise NotImplementedError("Need to implement for Task 3.3")
+    # compute if thread is within bound of `out`
+    if row < size and col < size:
+        # convert 2d index in cache into 1d index in storage
+        idx = row * size + col
+        # copy data from storage to cache
+        cache_a[row, col] = a[idx]
+        cache_b[row, col] = b[idx]
+        cuda.syncthreads()  # wait for all threads to finish copying before calculations can proceed
+        acc = 0.0  # accumulator for matmul results.
+        # matmul over the shared dimension
+        for k in range(size):
+            acc += cache_a[row, k] * cache_b[k, col]
+        # write accumulator result to global memory.
+        # single global write per thread
+        out[idx] = acc
 
 
 jit_mm_practice = jit(_mm_practice)
@@ -467,63 +469,42 @@ def _tensor_matrix_multiply(
     #    a) Copy into shared memory for a matrix.
     #    b) Copy into shared memory for b matrix
     #    c) Compute the dot produce for position c[i, j]
-    temp = 0.0
+    # TODO: Implement for Task 3.4.
 
-    # Number of tiles along the K dimension (shared dimension)
-    K = a_shape[-1]
-    num_tiles = (K + BLOCK_DIM - 1) // BLOCK_DIM
+    acc = 0.0  # accumulator for matmul results. One per thread
+    # Move across shared dimension by block dim.
+    for chunk in range(0, a_shape[-1], BLOCK_DIM):
+        # Each thread performs up to BLOCK_DIM iterations
+        # of loading into shared memory
+        for offset in range(BLOCK_DIM):
+            k = chunk + offset
+            # load from a_shared into shared memory if thread is within bounds
+            # else load 0.0 as placeholder
+            if i < out_shape[-2] and k < a_shape[-1]:
+                a_shared[pi, pj] = a_storage[
+                    a_strides[-2] * i + a_strides[-1] * k + batch * a_batch_stride
+                ]
+            else:
+                a_shared[pi, pj] = 0.0
+            # load from b_shared into shared memory if thread is within bounds
+            # else load 0.0 as placeholder
+            if j < out_shape[-1] and k < b_shape[-2]:
+                b_shared[pi, pj] = b_storage[
+                    b_strides[-2] * k + b_strides[-1] * j + batch * b_batch_stride
+                ]
+            else:
+                b_shared[pi, pj] = 0.0
+            cuda.syncthreads()  # wait for all threads to finish copying before calculations can proceed
+            acc += (
+                a_shared[pi, offset] * b_shared[offset, pj]
+            )  # each thread computes a single element of the matmul and add to its own accumulator
+        cuda.syncthreads()  # all threads must finish computing before moving to the next chunk
 
-    # Adjust batch indices for broadcasting
-    a_batch = batch if a_shape[0] > 1 else 0
-    b_batch = batch if b_shape[0] > 1 else 0
-
-    for tile_idx in range(num_tiles):
-        # Global indices for elements in A and B
-        a_i = i
-        a_j = tile_idx * BLOCK_DIM + pj
-
-        b_i = tile_idx * BLOCK_DIM + pi
-        b_j = j
-
-        # Load data into shared memory with boundary checks
-        if a_i < a_shape[-2] and a_j < a_shape[-1]:
-            a_index = cuda.local.array(MAX_DIMS, numba.int32)
-            a_index[0] = a_batch
-            a_index[1] = a_i
-            a_index[2] = a_j
-            a_pos = index_to_position(a_index, a_strides)
-            a_shared[pi, pj] = a_storage[a_pos]
-        else:
-            a_shared[pi, pj] = 0.0
-
-        if b_i < b_shape[-2] and b_j < b_shape[-1]:
-            b_index = cuda.local.array(MAX_DIMS, numba.int32)
-            b_index[0] = b_batch
-            b_index[1] = b_i
-            b_index[2] = b_j
-            b_pos = index_to_position(b_index, b_strides)
-            b_shared[pi, pj] = b_storage[b_pos]
-        else:
-            b_shared[pi, pj] = 0.0
-
-        # Synchronize to make sure the sub-matrices are loaded
-        cuda.syncthreads()
-
-        # Compute partial dot product
-        for k in range(BLOCK_DIM):
-            temp += a_shared[pi, k] * b_shared[k, pj]
-
-        # Synchronize before loading the next tile
-        cuda.syncthreads()
-
-    # Write the result to global memory if within bounds
+    # write to global memory if thread is within bounds
     if i < out_shape[-2] and j < out_shape[-1]:
-        out_index = cuda.local.array(MAX_DIMS, numba.int32)
-        out_index[0] = batch
-        out_index[1] = i
-        out_index[2] = j
-        out_pos = index_to_position(out_index, out_strides)
-        out[out_pos] = temp
+        # single write from accumulator to global memory
+        out[out_strides[-2] * i + out_strides[-1] * j + batch * out_strides[0]] += acc
+
 
 
 tensor_matrix_multiply = jit(_tensor_matrix_multiply)

@@ -102,9 +102,13 @@ def broadcast_index(
         None
 
     """
-    for i in range(len(shape)):
-        new_tensor = i + len(big_shape) - len(shape)
-        out_index[i] = big_index[new_tensor] if shape[i] > 1 else 0
+    for i, s in enumerate(shape):
+        if s > 1:
+            out_index[i] = big_index[i + (len(big_shape) - len(shape))]
+        else:
+            out_index[i] = 0
+    return None
+            
 
 
 def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:

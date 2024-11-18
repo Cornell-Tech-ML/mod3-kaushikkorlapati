@@ -524,8 +524,7 @@ class Tensor:
                     to the specified tensor or scalar.
 
         """
-        other = self._ensure_tensor(other)
-        return Add.apply(other, self)
+        return self + other
 
     def __rmul__(self, other: TensorLike) -> Tensor:
         """Implements the right multiplication operation for tensors.
@@ -540,7 +539,7 @@ class Tensor:
                     this tensor with the specified tensor or scalar.
 
         """
-        return Mul.apply(self._ensure_tensor(other), self)
+        return self * other
 
     def all(self, dim: Optional[int] = None) -> Tensor:
         """Computes the logical AND of all elements in the tensor along the specified dimension.
@@ -557,11 +556,9 @@ class Tensor:
 
         """
         if dim is None:
-            return self.f.mul_reduce(
-                self.contiguous().view(int(operators.prod(self.shape))), 0
-            )
+            return All.apply(self.view(self.size), self._ensure_tensor(0))
         else:
-            return All.apply(self, tensor(dim))
+            return All.apply(self, self._ensure_tensor(dim))
 
     def is_close(self, b: Tensor) -> Tensor:
         """Checks if the elements of this tensor are close to those of another tensor.
@@ -638,10 +635,7 @@ class Tensor:
 
         """
         if dim is None:
-            return Sum.apply(
-                self.contiguous().view(self.size),
-                self._ensure_tensor(0),
-            )
+            return Sum.apply(self.contiguous().view(self.size), self._ensure_tensor(0))
         else:
             return Sum.apply(self, self._ensure_tensor(dim))
 
@@ -699,9 +693,4 @@ class Tensor:
             Tensor: A new tensor with the specified shape.
 
         """
-        shape = (
-            (shape[0],)
-            if len(shape) == 1 and isinstance(shape[0], int)
-            else tuple(shape)
-        )
-        return View.apply(self, tensor(shape))
+        return View.apply(self, tensor(list(shape)))

@@ -278,8 +278,8 @@ class Mul(Function):
 
         """
         t1, t2 = ctx.saved_values
-        return grad_output.f.mul_zip(grad_output, t2), grad_output.f.mul_zip(
-            grad_output, t1
+        return grad_output.f.mul_zip(t2, grad_output), grad_output.f.mul_zip(
+            t1, grad_output
         )
 
 
@@ -327,14 +327,8 @@ class Sigmoid(Function):
             to the output tensor.
 
         """
-        (t1_sig,) = ctx.saved_values
-        return grad_output.f.mul_zip(
-            grad_output,
-            t1_sig.f.mul_zip(
-                t1_sig,
-                t1_sig.f.add_zip(tensor([1.0]), t1_sig.f.neg_map(t1_sig)),
-            ),
-        )
+        sigma: Tensor = ctx.saved_values[0]
+        return sigma * (-sigma + 1.0) * grad_output
 
 
 class ReLU(Function):
