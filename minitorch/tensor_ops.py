@@ -339,6 +339,7 @@ def tensor_zip(
             b_pos = index_to_position(b_index, b_strides)
             out_pos = index_to_position(out_index, out_strides)
             out[out_pos] = fn(a_storage[a_pos], b_storage[b_pos])
+
     return _zip
 
 

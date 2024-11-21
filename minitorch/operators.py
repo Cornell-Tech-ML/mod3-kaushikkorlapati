@@ -3,6 +3,7 @@
 import math
 from typing import Callable, List, Iterable
 
+
 # Mathematical functions:
 def mul(a: float, b: float) -> float:
     """Multiply two float values.

@@ -7,7 +7,6 @@ from numba import prange
 from numba import njit as _njit
 
 from .tensor_data import (
-    MAX_DIMS,
     broadcast_index,
     index_to_position,
     shape_broadcast,
@@ -19,7 +18,7 @@ if TYPE_CHECKING:
     from typing import Callable, Optional
 
     from .tensor import Tensor
-    from .tensor_data import Index, Shape, Storage, Strides
+    from .tensor_data import Shape, Storage, Strides
 
 # TIP: Use `NUMBA_DISABLE_JIT=1 pytest tests/ -m task3_1` to run these tests without JIT.
 
@@ -30,6 +29,7 @@ Fn = TypeVar("Fn")
 
 
 def njit(fn: Fn, **kwargs: Any) -> Fn:
+    """Wrapper for Numba's njit with inline optimization."""
     return _njit(inline="always", **kwargs)(fn)  # type: ignore
 
 
@@ -272,17 +272,18 @@ def tensor_reduce(
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        reduce_size = a_shape[reduce_dim]
-        reduce_stride = a_strides[reduce_dim]
+        new_size = a_shape[reduce_dim]
+        new_stride = a_strides[reduce_dim]
         for i in prange(len(out)):
             out_index = np.empty(len(out_shape), dtype=np.int32)
             to_index(i, out_shape, out_index)
-            out_pos = index_to_position(out_index, out_strides)
             out_index[reduce_dim] = 0
             a_pos = index_to_position(out_index, a_strides)
-            for j in range(reduce_size):
-                out[out_pos] = fn(out[out_pos], a_storage[a_pos])
-                a_pos += reduce_stride
+            for j in range(new_size):
+                out[index_to_position(out_index, out_strides)] = fn(
+                    out[index_to_position(out_index, out_strides)], a_storage[a_pos]
+                )
+                a_pos += new_stride
 
     return njit(_reduce, parallel=True)  # type: ignore
 
@@ -334,18 +335,23 @@ def _tensor_matrix_multiply(
     b_batch_stride = b_strides[0] if b_shape[0] > 1 else 0
 
     # TODO: Implement for Task 3.2.
-    d_shared = a_shape[-1]
-    for l in prange(len(out)):
-        j = l % out_shape[2]
+    shared = a_shape[-1]
+    out_size = len(out)
+
+    for l in prange(out_size):
         i = (l // out_shape[2]) % out_shape[1]
+        j = l % out_shape[2]
+
         n = l // (out_shape[1] * out_shape[2])
-        acc = 0.0
+
+        result = 0.0
         out_pos = n * out_strides[0] + i * out_strides[1] + j * out_strides[2]
-        for k in range(d_shared):
-            a_pos = n * a_batch_stride + i * a_strides[1] + k * a_strides[2]
-            b_pos = n * b_batch_stride + k * b_strides[1] + j * b_strides[2]
-            acc += a_storage[a_pos] * b_storage[b_pos]
-        out[out_pos] = acc
+        for k in range(shared):
+            result += (
+                a_storage[n * a_batch_stride + i * a_strides[1] + k * a_strides[2]]
+                * b_storage[n * b_batch_stride + k * b_strides[1] + j * b_strides[2]]
+            )
+        out[out_pos] = result
 
 
 tensor_matrix_multiply = njit(_tensor_matrix_multiply, parallel=True)

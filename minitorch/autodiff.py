@@ -104,6 +104,7 @@ def topological_sort(variable: Variable) -> Iterable[Variable]:
             for parent in var.parents:
                 dfs(parent)
             stack.insert(0, var)
+
     dfs(variable)
     return stack
 

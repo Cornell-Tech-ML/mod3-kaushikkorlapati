@@ -107,7 +107,6 @@ def broadcast_index(
         else:
             out_index[t] = 0
     return None
-            
 
 
 def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
