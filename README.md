@@ -311,6 +311,9 @@ No allocation hoisting found
 None
 ```
 
+# Benchmarking CPU VS GPU
+![Benchmark Plot](gpu_cpu_plot.png)
+
 # Training
 ### Split, GPU
 ```
