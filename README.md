@@ -33,7 +33,7 @@ The files that will be synced are:
 
 # Training
 ### Split, GPU
-
+```
 Epoch  0  loss  5.706236482866451 correct 37 epoch time 0 s
 Epoch  10  loss  4.427626938293522 correct 40 epoch time 13.307547807693481 s
 Epoch  20  loss  3.841515521779433 correct 46 epoch time 12.120750188827515 s
@@ -60,8 +60,9 @@ Epoch  220  loss  0.44674118072417074 correct 49 epoch time 11.868714332580566 s
 Epoch  230  loss  0.8853695800248144 correct 50 epoch time 11.8999764919281 s
 Epoch  240  loss  0.3223715761466266 correct 50 epoch time 11.871196746826172 s
 Epoch  250  loss  0.404209196001514 correct 50 epoch time 12.06489086151123 s
-
+```
 ### Split, CPU
+```
 Epoch  0  loss  8.181905434505705 correct 26 epoch time 0 s
 Epoch  10  loss  4.559009185056569 correct 41 epoch time 0.7435309886932373 s
 Epoch  20  loss  4.972942976572974 correct 44 epoch time 0.739741325378418 s
@@ -87,8 +88,9 @@ Epoch  210  loss  0.9220865940168931 correct 49 epoch time 0.7311418056488037 s
 Epoch  220  loss  0.7306323285880068 correct 49 epoch time 0.7786500453948975 s
 Epoch  230  loss  1.1214489678993858 correct 49 epoch time 0.7367608547210693 s
 Epoch  240  loss  2.5063177682365176 correct 50 epoch time 0.7359342575073242 s
-
+```
 ### XOR, GPU
+```
 Epoch  0  loss  6.92868161361976 correct 30 epoch time 0 s
 Epoch  10  loss  2.830050025886187 correct 34 epoch time 12.966995477676392 s
 Epoch  20  loss  4.217035188765025 correct 44 epoch time 12.057184219360352 s
@@ -114,8 +116,9 @@ Epoch  210  loss  0.7779231387654184 correct 49 epoch time 13.051491498947144 s
 Epoch  220  loss  1.9782070910068141 correct 48 epoch time 11.8840012550354 s
 Epoch  230  loss  0.9223399846732823 correct 50 epoch time 11.963410139083862 s
 Epoch  240  loss  1.1415895290784923 correct 50 epoch time 11.930877208709717 s
-
+```
 ### XOR, CPU
+```
 Epoch  0  loss  8.928739660935348 correct 31 epoch time 0 s
 Epoch  10  loss  5.85793818261176 correct 42 epoch time 0.7343738079071045 s
 Epoch  20  loss  4.858857050290453 correct 43 epoch time 0.7567970752716064 s
@@ -141,8 +144,9 @@ Epoch  210  loss  1.359403200393774 correct 50 epoch time 0.7362449169158936 s
 Epoch  220  loss  1.0555398475850708 correct 50 epoch time 0.7443499565124512 s
 Epoch  230  loss  0.8186598426853438 correct 50 epoch time 0.7330830097198486 s
 Epoch  240  loss  0.24733656205753052 correct 50 epoch time 0.7327971458435059 s
-
+```
 ### Simple, GPU
+```
 Epoch  0  loss  3.5087839525383053 correct 47 epoch time 0 s
 Epoch  10  loss  1.0212509947978705 correct 50 epoch time 12.030852317810059 s
 Epoch  20  loss  0.17344532834999007 correct 50 epoch time 12.056978225708008 s
@@ -168,8 +172,9 @@ Epoch  210  loss  0.003975204849127995 correct 50 epoch time 12.113883256912231 
 Epoch  220  loss  0.07407491998557868 correct 50 epoch time 12.161880731582642 s
 Epoch  230  loss  0.09495975584868052 correct 50 epoch time 12.083121061325073 s
 Epoch  240  loss  0.17493891899874436 correct 50 epoch time 12.022337913513184 s
-
+```
 ### Simple, CPU
+```
 Epoch  0  loss  5.922465893035497 correct 47 epoch time 0 s
 Epoch  10  loss  3.24404502665083 correct 48 epoch time 0.8137001991271973 s
 Epoch  20  loss  1.736884133074927 correct 48 epoch time 0.7403850555419922 s
@@ -195,9 +200,10 @@ Epoch  210  loss  0.446626125155781 correct 50 epoch time 0.742311954498291 s
 Epoch  220  loss  0.29349622081921106 correct 50 epoch time 0.7639691829681396 s
 Epoch  230  loss  0.45736749920813546 correct 50 epoch time 0.738814115524292 s
 Epoch  240  loss  0.49758938172980294 correct 50 epoch time 0.7315499782562256 s
-
+```
 # Training (Large)
 ### Split, GPU
+```
 Epoch  0  loss  9.008688513457354 correct 23 epoch time 0 s
 Epoch  10  loss  3.64246090126385 correct 49 epoch time 12.803434371948242 s
 Epoch  20  loss  1.7496277603257255 correct 49 epoch time 12.94964051246643 s
@@ -223,8 +229,9 @@ Epoch  210  loss  0.30515353839198095 correct 50 epoch time 12.782158374786377 s
 Epoch  220  loss  0.21713854820020603 correct 50 epoch time 13.689262866973877 s
 Epoch  230  loss  0.24321041534388121 correct 50 epoch time 12.834744453430176 s
 Epoch  240  loss  0.15949425502657633 correct 50 epoch time 12.806899785995483 s
-
+```
 ### Split, CPU
+```
 Epoch  0  loss  7.728345917319499 correct 34 epoch time 0 s
 Epoch  10  loss  7.586074820646691 correct 35 epoch time 1.1171300411224365 s
 Epoch  20  loss  3.715108912200163 correct 46 epoch time 1.0435919761657715 s
@@ -250,8 +257,9 @@ Epoch  210  loss  0.8383117693578298 correct 48 epoch time 1.0285627841949463 s
 Epoch  220  loss  0.20467182158223995 correct 47 epoch time 1.02559494972229 s
 Epoch  230  loss  0.6677478646205175 correct 50 epoch time 1.0628011226654053 s
 Epoch  240  loss  1.9569247033944035 correct 47 epoch time 1.0287461280822754 s
-
+```
 ### Xor, GPU
+```
 Epoch  0  loss  3.8658661906763268 correct 24 epoch time 0 s
 Epoch  10  loss  5.2095593215106595 correct 41 epoch time 12.921333074569702 s
 Epoch  20  loss  2.508428314578268 correct 46 epoch time 13.047126054763794 s
@@ -277,8 +285,9 @@ Epoch  210  loss  0.3695937876654839 correct 50 epoch time 12.892482995986938 s
 Epoch  220  loss  0.18909738525210157 correct 50 epoch time 12.903837442398071 s
 Epoch  230  loss  0.07448885751089608 correct 50 epoch time 12.813367366790771 s
 Epoch  240  loss  0.6335437420415192 correct 50 epoch time 12.854318857192993 s
-
+```
 ### Xor, CPU
+```
 Epoch  0  loss  7.62412871418381 correct 35 epoch time 0 s
 Epoch  10  loss  6.1559955331311444 correct 43 epoch time 1.0378351211547852 s
 Epoch  20  loss  2.4630266609094345 correct 45 epoch time 1.0317707061767578 s
@@ -304,8 +313,9 @@ Epoch  210  loss  0.22183293781065205 correct 49 epoch time 1.0436170101165771 s
 Epoch  220  loss  0.5279093189868882 correct 49 epoch time 1.0331292152404785 s
 Epoch  230  loss  0.8036002022938713 correct 47 epoch time 1.0410881042480469 s
 Epoch  240  loss  1.0455497410926888 correct 49 epoch time 1.0430808067321777 s
-
+```
 ### Simple, GPU
+```
 Epoch  0  loss  2.1384706025790914 correct 46 epoch time 0 s
 Epoch  10  loss  0.5590621331902426 correct 49 epoch time 12.973556995391846 s
 Epoch  20  loss  0.6192216506589763 correct 50 epoch time 13.196425437927246 s
@@ -331,8 +341,9 @@ Epoch  210  loss  0.09432021624998846 correct 50 epoch time 13.023256540298462 s
 Epoch  220  loss  0.12527109824187682 correct 50 epoch time 12.893369197845459 s
 Epoch  230  loss  0.025580380315011392 correct 50 epoch time 12.960844039916992 s
 Epoch  240  loss  0.0024011690278194346 correct 50 epoch time 12.824127435684204 s
-
+```
 ### Simple, CPU
+```
 Epoch  0  loss  4.201342068400233 correct 49 epoch time 0 s
 Epoch  10  loss  2.7626907067860054 correct 46 epoch time 1.0357749462127686 s
 Epoch  20  loss  0.47644724195206123 correct 50 epoch time 1.09116792678833 s
@@ -358,3 +369,4 @@ Epoch  210  loss  0.13170996202802293 correct 50 epoch time 1.0638611316680908 s
 Epoch  220  loss  0.23032720216830566 correct 50 epoch time 1.0314490795135498 s
 Epoch  230  loss  0.17285795222963418 correct 50 epoch time 1.0825169086456299 s
 Epoch  240  loss  0.1181269349587028 correct 50 epoch time 1.0597591400146484 s
+```
