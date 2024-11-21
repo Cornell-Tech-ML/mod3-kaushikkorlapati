@@ -198,7 +198,7 @@ def relu(x: float) -> float:
     return x if x > 0 else 0
 
 
-def log(x: float, base: float = math.e) -> float:
+def log(x: float) -> float:
     """Compute the logarithm of a number with a specified base.
 
     Args:
@@ -214,7 +214,7 @@ def log(x: float, base: float = math.e) -> float:
         The logarithm of `x` to the given base.
 
     """
-    return math.log(x) if base == math.e else math.log(x) / math.log(base)
+    return math.log(x)
 
 
 def exp(x: float) -> float:

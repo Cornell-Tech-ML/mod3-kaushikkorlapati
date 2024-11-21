@@ -174,14 +174,12 @@ def tensor_map(
         in_index = cuda.local.array(MAX_DIMS, numba.int32)
         i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
         # TODO: Implement for Task 3.3.
-        out_index = np.zeros(len(out_shape), dtype=np.int32)
-        for i in range(len(out)):
+        if i < out_size:
             to_index(i, out_shape, out_index)
+            broadcast_index(out_index, out_shape, in_shape, in_index)
+            in_pos = index_to_position(in_index, in_strides)
             out_pos = index_to_position(out_index, out_strides)
-            for j in range(a_shape[reduce_dim]):
-                out_index[reduce_dim] = j
-                a_pos = index_to_position(out_index, a_strides)
-                out[out_pos] = fn(out[out_pos], a_storage[a_pos])
+            out[out_pos] = fn(in_storage[in_pos])
 
     return cuda.jit()(_map)  # type: ignore
 
@@ -218,9 +216,9 @@ def tensor_zip(
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        out_index = cuda.local.array(MAX_DIMS, numba.int32)
         a_index = cuda.local.array(MAX_DIMS, numba.int32)
         b_index = cuda.local.array(MAX_DIMS, numba.int32)
+        out_index = cuda.local.array(MAX_DIMS, numba.int32)
         i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
 
         # TODO: Implement for Task 3.3.
@@ -266,18 +264,20 @@ def _sum_practice(out: Storage, a: Storage, size: int) -> None:
     # TODO: Implement for Task 3.3.
     if i < size:
         cache[pos] = a[i]
+    else:
+        cache[pos] = 0.0
+
+    cuda.syncthreads()
+
+    stride = 1
+    while stride < BLOCK_DIM:
+        if pos % (2 * stride) == 0 and pos + stride < BLOCK_DIM:
+            cache[pos] += cache[pos + stride]
+        stride *= 2
         cuda.syncthreads()
-        max_pos = min(BLOCK_DIM, size - cuda.blockIdx.x * BLOCK_DIM) + 1
-        span = 2
-        while span < max_pos:
-            if pos % span == 0:
-                next = pos + span // 2
-                cache[pos] += cache[next]
-            span *= 2
-            cuda.syncthreads()
-        if pos == 0:
-            out[cuda.blockIdx.x] = cache[0]
-    raise NotImplementedError("Need to implement for Task 3.3")
+
+    if pos == 0:
+        out[cuda.blockIdx.x] = cache[0]
 
 
 jit_sum_practice = cuda.jit()(_sum_practice)
@@ -321,31 +321,35 @@ def tensor_reduce(
         reduce_dim: int,
         reduce_value: float,
     ) -> None:
-        BLOCK_DIM = 1024
+        BLOCK_DIM = 512
         cache = cuda.shared.array(BLOCK_DIM, numba.float64)
         out_index = cuda.local.array(MAX_DIMS, numba.int32)
         out_pos = cuda.blockIdx.x
         pos = cuda.threadIdx.x
 
         # TODO: Implement for Task 3.3.
-        reduce_dim_local = reduce_dim
+        local_dim = reduce_dim
         if out_pos < out_size:
             to_index(out_pos, out_shape, out_index)
             o = index_to_position(out_index, out_strides)
-            if pos < a_shape[reduce_dim_local]:
-                out_index[reduce_dim_local] = pos
+
+            if pos < a_shape[local_dim]:
+                out_index[local_dim] = pos
                 a = index_to_position(out_index, a_strides)
                 cache[pos] = a_storage[a]
             else:
                 cache[pos] = reduce_value
             cuda.syncthreads()
-            span = 2
-            while span < BLOCK_DIM + 1:
-                if pos % span == 0:
-                    next = pos + span // 2
+
+            temp = 2
+
+            while temp < BLOCK_DIM + 1:
+                if pos % temp == 0:
+                    next = pos + temp // 2
                     cache[pos] = fn(cache[pos], cache[next])
-                span *= 2
+                temp *= 2
                 cuda.syncthreads()
+
             if pos == 0:
                 out[o] = cache[0]
 
@@ -391,20 +395,19 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
     col = cuda.threadIdx.y
 
     # compute if thread is within bound of `out`
-    if row < size and col < size:
-        # convert 2d index in cache into 1d index in storage
-        idx = row * size + col
-        # copy data from storage to cache
+    if col < size and row < size:
+
+        idx = col + row * size
+
         cache_a[row, col] = a[idx]
         cache_b[row, col] = b[idx]
-        cuda.syncthreads()  # wait for all threads to finish copying before calculations can proceed
-        acc = 0.0  # accumulator for matmul results.
-        # matmul over the shared dimension
+        cuda.syncthreads()  # wait for all threads
+        res = 0.0  # accumulator for matmul results.
+
         for k in range(size):
-            acc += cache_a[row, k] * cache_b[k, col]
-        # write accumulator result to global memory.
-        # single global write per thread
-        out[idx] = acc
+            res += cache_a[row, k] * cache_b[k, col]
+
+        out[idx] = res
 
 jit_mm_practice = jit(_mm_practice)
 

@@ -127,37 +127,23 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
         IndexingError : if cannot broadcast
 
     """
-    shape1 = list(shape1)[::-1]
-    shape2 = list(shape2)[::-1]
-
-    # Find the maximum length of the two shapes
-    max_length = max(len(shape1), len(shape2))
-
-    # Pad the shapes with ones
-    shape1 += (1,) * (max_length - len(shape1))
-    shape2 += (1,) * (max_length - len(shape2))
-
-    result_shape = []
-
-    # Iterate through each dimension
-    for dim1, dim2 in zip(shape1, shape2):
-        if dim1 == dim2:
-            # Dimensions are equal, keep this dimension
-            result_shape.append(dim1)
-        elif dim1 == 1:
-            # Dimension from shape1 can stretch to fit dim2
-            result_shape.append(dim2)
-        elif dim2 == 1:
-            # Dimension from shape2 can stretch to fit dim1
-            result_shape.append(dim1)
+    a, b = shape1, shape2
+    m = max(len(a), len(b))
+    c_rev = [0] * m
+    a_rev = list(reversed(a))
+    b_rev = list(reversed(b))
+    for i in range(m):
+        if i >= len(a):
+            c_rev[i] = b_rev[i]
+        elif i >= len(b):
+            c_rev[i] = a_rev[i]
         else:
-            # Cannot broadcast, raise an error
-            raise IndexingError(
-                f"Cannot broadcast shapes {shape1[::-1]} and {shape2[::-1]}."
-            )
-
-    # Reverse the result shape to restore original order
-    return tuple(result_shape[::-1])
+            c_rev[i] = max(a_rev[i], b_rev[i])
+            if a_rev[i] != c_rev[i] and a_rev[i] != 1:
+                raise IndexingError(f"Broadcast failure {a} {b}")
+            if b_rev[i] != c_rev[i] and b_rev[i] != 1:
+                raise IndexingError(f"Broadcast failure {a} {b}")
+    return tuple(reversed(c_rev))
 
 
 def strides_from_shape(shape: UserShape) -> UserStrides:
