@@ -123,7 +123,6 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
 
     """
     grad_table = {variable.unique_id: deriv}
-    print(grad_table)
 
     # Get the list of variables in topological order
     sorted_variables = topological_sort(variable)

@@ -1,5 +1,5 @@
 import random
-
+import time
 import numba
 
 import minitorch
@@ -10,8 +10,22 @@ if numba.cuda.is_available():
     GPUBackend = minitorch.TensorBackend(minitorch.CudaOps)
 
 
+import time
+
+run_time = 0
+
 def default_log_fn(epoch, total_loss, correct, losses):
-    print("Epoch ", epoch, " loss ", total_loss, "correct", correct)
+    epoch_time = 0
+    global run_time
+    if run_time == 0:
+        run_time = time.time()  # No need to multiply by 1000; use seconds directly
+    else:
+        curr_time = time.time()
+        epoch_time = curr_time - run_time  # Time difference in seconds
+        run_time = curr_time
+
+    print("Epoch ", epoch, " loss ", total_loss, "correct", correct, "epoch time", epoch_time, "s")
+
 
 
 def RParam(*shape, backend):
