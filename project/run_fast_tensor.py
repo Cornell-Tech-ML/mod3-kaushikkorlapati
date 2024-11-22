@@ -1,5 +1,5 @@
 import random
-
+import time
 import numba
 
 import minitorch
@@ -10,8 +10,22 @@ if numba.cuda.is_available():
     GPUBackend = minitorch.TensorBackend(minitorch.CudaOps)
 
 
+import time
+
+run_time = 0
+
 def default_log_fn(epoch, total_loss, correct, losses):
-    print("Epoch ", epoch, " loss ", total_loss, "correct", correct)
+    epoch_time = 0
+    global run_time
+    if run_time == 0:
+        run_time = time.time()  # No need to multiply by 1000; use seconds directly
+    else:
+        curr_time = time.time()
+        epoch_time = curr_time - run_time  # Time difference in seconds
+        run_time = curr_time
+
+    print("Epoch ", epoch, " loss ", total_loss, "correct", correct, "epoch time", epoch_time, "s")
+
 
 
 def RParam(*shape, backend):
@@ -29,8 +43,14 @@ class Network(minitorch.Module):
         self.layer3 = Linear(hidden, 1, backend)
 
     def forward(self, x):
-        # TODO: Implement for Task 3.5.
-        raise NotImplementedError("Need to implement for Task 3.5")
+       # Pass input through the first linear layer and apply ReLU activation
+        h = self.layer1.forward(x).relu()
+        # Pass through the second linear layer and apply ReLU activation
+        h = self.layer2.forward(h).relu()
+        # Pass through the third linear layer and apply Sigmoid activation
+        out = self.layer3.forward(h).sigmoid()
+        return out
+
 
 
 class Linear(minitorch.Module):
@@ -43,8 +63,7 @@ class Linear(minitorch.Module):
         self.out_size = out_size
 
     def forward(self, x):
-        # TODO: Implement for Task 3.5.
-        raise NotImplementedError("Need to implement for Task 3.5")
+        return x @ self.weights.value + self.bias.value
 
 
 class FastTrain:
@@ -59,7 +78,7 @@ class FastTrain:
     def run_many(self, X):
         return self.model.forward(minitorch.tensor(X, backend=self.backend))
 
-    def train(self, data, learning_rate, max_epochs=500, log_fn=default_log_fn):
+    def train(self, data, learning_rate, max_epochs=250, log_fn=default_log_fn):
         self.model = Network(self.hidden_layers, self.backend)
         optim = minitorch.SGD(self.model.parameters(), learning_rate)
         BATCH = 10
@@ -116,7 +135,7 @@ if __name__ == "__main__":
     if args.DATASET == "xor":
         data = minitorch.datasets["Xor"](PTS)
     elif args.DATASET == "simple":
-        data = minitorch.datasets["Simple"].simple(PTS)
+        data = minitorch.datasets["Simple"](PTS)
     elif args.DATASET == "split":
         data = minitorch.datasets["Split"](PTS)
 
